@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body class="flex bg-gray-100">
+
+  <!-- Sidebar -->
+  <div class="w-64 bg-gradient-to-b from-blue-600 to-indigo-600 text-white min-h-screen p-6">
+    <h1 class="text-2xl font-bold mb-10">Campus Connect</h1>
+    <ul class="space-y-5">
+      <li onclick="openSection('timetable')" class="cursor-pointer hover:underline">Timetable</li>
+      <li onclick="openSection('faculty_timetable')" class="cursor-pointer hover:underline">
+        Faculty Timetable
+      </li>
+      <li onclick="openSection('events')" class="cursor-pointer hover:underline">Events</li>
+      <li onclick="openSection('buildings')" class="cursor-pointer hover:underline">Buildings</li>
+      <li onclick="openSection('schedule')" class="cursor-pointer hover:underline">Schedule</li>
+      <li onclick="openSection('users')" class="cursor-pointer hover:underline">Users</li>
+      <li onclick="logout()" class="cursor-pointer text-red-300">Logout</li>
+    </ul>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 p-10">
+    <h2 class="text-3xl font-bold mb-8">Admin Dashboard</h2>
+
+    <div id="dashboardCards" class="grid grid-cols-2 md:grid-cols-3 gap-6">
+      <div onclick="openSection('timetable')" class="card">📅 Timetable</div>
+      <div onclick="openSection('faculty_timetable')" class="card">👩‍🏫 Faculty Timetable</div>
+      <div onclick="openSection('events')" class="card">🎉 Events</div>
+      <div onclick="openSection('buildings')" class="card">🏢 Buildings</div>
+      <div onclick="openSection('schedule')" class="card">📊 Schedule</div>
+    </div>
+
+    <!-- Section -->
+    <div id="sectionPage" class="hidden mt-8">
+      <h2 id="sectionTitle" class="text-2xl font-bold mb-4"></h2>
+      <div id="formArea" class="flex gap-3 flex-wrap mb-4"></div>
+      <div id="tableContainer" class="overflow-x-auto">
+        <!-- Users table placeholder -->
+        <table id="userTable" class="w-full bg-white"></table>
+      </div>
+      <button onclick="back()" class="mt-4 text-blue-600">← Back</button>
+    </div>
+  </div>
+
+  <style>
+    .card{
+      background:white;
+      padding:20px;
+      border-radius:12px;
+      box-shadow:0 4px 10px rgba(0,0,0,0.1);
+      cursor:pointer;
+      transition:0.3s;
+      text-align:center;
+      font-weight:bold;
+    }
+    .card:hover{
+      transform:translateY(-5px);
+      background:#eef2ff;
+    }
+    .slot{
+      border:1px dashed #cbd5e1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      background:#f8fafc;
+    }
+    .slot:hover{ background:#e0e7ff; }
+    .subject{
+      background:#6366f1;
+      color:white;
+      padding:4px 6px;
+      border-radius:6px;
+      cursor:grab;
+      font-size:12px;
+    }
+.slot{
+min-height:40px;
+padding:4px;
+}
+
+.subject{
+background:#6366f1;
+color:white;
+padding:4px 6px;
+border-radius:6px;
+cursor:grab;
+font-size:12px;
+text-align:center;
+}
+  </style>
+
+  <script>
+    const uni_id = localStorage.getItem("uni_id");
+    console.log("Dashboard UNI ID:", uni_id);
+    if(!uni_id){
+      alert("University ID missing. Login again");
+      window.location.href="register.html";
+    }
+    // ================= SECTION SWITCH =================
+    function openSection(type){
+      dashboardCards.style.display="none";
+      sectionPage.classList.remove("hidden");
+      sectionTitle.innerText = type.toUpperCase();
+      formArea.innerHTML = "";
+      tableContainer.innerHTML = `<table id="userTable" class="w-full bg-white"></table>`;
+
+      if(type==="timetable"){ 
+        renderTimetableUI();
+        setTimeout(loadTimetable,200);
+      }
+
+      if(type==="faculty_timetable"){ 
+        renderFacultyTimetableUI();
+        setTimeout(loadFacultyTimetable,200);
+      }
+      if(type==="events"){
+        formArea.innerHTML = `
+          <input id="title" placeholder="Title">
+          <input id="date" placeholder="Date">
+          <input id="desc" placeholder="Description">
+          <button onclick="addEvent()">Add</button>
+        `;
+        loadEvents();
+      }
+
+      if(type==="buildings"){
+        formArea.innerHTML = `
+          <input id="name" placeholder="Building">
+          <input id="rooms" placeholder="Rooms">
+          <button onclick="addBuilding()">Add</button>
+        `;
+        loadBuildings();
+      }
+
+      if(type==="schedule"){
+        formArea.innerHTML = `
+          <input id="title" placeholder="Title">
+          <input id="date" placeholder="Date">
+          <button onclick="addSchedule()">Add</button>
+        `;
+        loadSchedule();
+      }
+      if(type==="users"){
+        formArea.innerHTML = `
+        <button onclick="showStudentForm()" class="bg-blue-500 text-white px-3 py-2 rounded">
+          Add Student
+        </button>
+
+<button onclick="showFacultyForm()" class="bg-green-500 text-white px-3 py-2 rounded">
+Add Faculty
+</button>
+
+<div id="userForm" class="mt-4 w-full"></div>
+
+`;
+
+loadUsers();
+
+}
+
+}
+
+function back(){
+      dashboardCards.style.display="grid";
+      sectionPage.classList.add("hidden");
+}
+
+    // ================= TIMETABLE =================
+function renderTimetableUI(){
+
+formArea.innerHTML = `
+
+<select id="dept" class="border p-2 rounded">
+<option value="CSE">CSE</option>
+<option value="IT">IT</option>
+<option value="ECE">ECE</option>
+</select>
+
+<select id="sem" class="border p-2 rounded">
+<option value="Sem 1">Sem 1</option>
+<option value="Sem 2">Sem 2</option>
+<option value="Sem 3">Sem 3</option>
+<option value="Sem 4">Sem 4</option>
+<option value="Sem 5">Sem 5</option>
+<option value="Sem 6">Sem 6</option>
+<option value="Sem 7">Sem 7</option>
+<option value="Sem 8">Sem 8</option>
+</select>
+
+<input 
+type="text" 
+id="subjectInput" 
+placeholder="Enter Subject" 
+class="border p-2 rounded">
+
+<button 
+onclick="addSubject()" 
+class="bg-blue-500 text-white px-3 py-2 rounded">
+Add Subject
+</button>
+
+<input 
+type="file" 
+id="excelFile" 
+accept=".xlsx" 
+class="border p-2 rounded">
+
+<button 
+onclick="uploadExcel()" 
+class="bg-green-500 text-white px-3 py-2 rounded">
+Upload Excel
+</button>
+
+<button 
+onclick="loadTimetable()" 
+class="bg-indigo-500 text-white px-3 py-2 rounded">
+Load
+</button>
+
+<div id="subjectList" class="flex gap-2 mt-3 flex-wrap"></div>
+
+`;
+
+let days = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+
+let html = `
+<table class="w-full bg-white rounded shadow text-center border border-gray-300">
+
+<tr class="bg-indigo-200">
+<th class="border p-2">Time</th>
+${days.map(d => `<th class="border p-2">${d}</th>`).join("")}
+</tr>
+`;
+
+for(let i=1;i<=6;i++){
+
+html += `
+<tr>
+
+<td class="border font-bold bg-gray-50">
+Slot ${i}
+</td>
+
+${days.map(d => `
+<td class="border p-0">
+
+<div class="flex flex-col h-24">
+
+<div 
+class="slot border-b flex-1"
+data-day="${d}"
+data-slot="${i}"
+data-part="1">
+</div>
+
+<div 
+class="slot flex-1"
+data-day="${d}"
+data-slot="${i}"
+data-part="2">
+</div>
+
+</div>
+
+</td>
+`).join("")}
+
+</tr>
+`;
+
+}
+
+html += `</table>`;
+
+tableContainer.innerHTML = html;
+
+
+// DRAG SYSTEM
+setTimeout(()=>{
+
+document.querySelectorAll('.slot').forEach(slot=>{
+
+new Sortable(slot,{
+
+group:'shared',
+animation:150,
+
+onAdd: async function (evt){
+
+let subject = evt.item.innerText;
+let day = evt.to.dataset.day;
+let slotNo = evt.to.dataset.slot;
+let part = evt.to.dataset.part;
+
+// Keep subject visible
+evt.to.innerHTML = `<div class="subject">${subject}</div>`;
+
+await fetch("http://127.0.0.1:8000/add_timetable",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+subject,
+day,
+slot:slotNo,
+part,
+semester:document.getElementById("sem").value,
+department:document.getElementById("dept").value,
+university_id:localStorage.getItem("uni_id")
+
+})
+
+});
+
+// REMOVE THIS
+// await loadTimetable();
+
+
+
+//await loadTimetable(); // refresh
+
+}
+
+});
+
+});
+
+new Sortable(
+document.getElementById("subjectList"),
+{
+group:'shared',
+animation:150
+}
+);
+
+document.getElementById("dept").onchange = loadTimetable;
+document.getElementById("sem").onchange = loadTimetable;
+
+loadTimetable();
+
+},100);
+
+}
+
+function renderFacultyTimetableUI(){
+
+formArea.innerHTML = `
+
+<div class="flex gap-3 flex-wrap">
+
+<input 
+id="faculty" 
+placeholder="Faculty Name" 
+class="border p-2 rounded">
+
+<select 
+id="facultySem" 
+class="border p-2 rounded">
+<option value="">Select Semester</option>
+<option value="Sem 1">Sem 1</option>
+<option value="Sem 2">Sem 2</option>
+<option value="Sem 3">Sem 3</option>
+<option value="Sem 4">Sem 4</option>
+<option value="Sem 5">Sem 5</option>
+<option value="Sem 6">Sem 6</option>
+<option value="Sem 7">Sem 7</option>
+<option value="Sem 8">Sem 8</option>
+</select>
+
+<input 
+type="text" 
+id="facultySubjectInput" 
+placeholder="Enter Subject" 
+class="border p-2 rounded">
+
+<button 
+onclick="addFacultySubject()" 
+class="bg-indigo-500 text-white px-3 py-2 rounded">
+Add Subject
+</button>
+
+<button 
+onclick="loadFacultyTimetable()" 
+class="bg-gray-500 text-white px-3 py-2 rounded">
+Load
+</button>
+
+</div>
+
+<div id="facultySubjects" class="flex gap-2 mt-3 flex-wrap"></div>
+
+`;
+
+let days = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+
+let html = `
+<table class="w-full bg-white rounded shadow text-center border">
+<tr class="bg-indigo-200">
+<th>Time</th>
+${days.map(d=>`<th>${d}</th>`).join("")}
+</tr>
+`;
+
+for(let i=1;i<=6;i++){
+
+html += `
+<tr>
+<td class="border font-bold">Slot ${i}</td>
+
+${days.map(d=>`
+
+<td class="border p-0">
+<div class="flex flex-col h-24">
+
+<div class="slot border-b flex-1 min-h-[40px]"
+data-day="${d}"
+data-slot="${i}"
+data-part="1"></div>
+
+<div class="slot flex-1 min-h-[40px]"
+data-day="${d}"
+data-slot="${i}"
+data-part="2"></div>
+
+</div>
+</td>
+
+`).join("")}
+
+</tr>
+`;
+
+}
+
+html += `</table>`;
+
+tableContainer.innerHTML = html;
+
+document.getElementById("facultySem").onchange = loadFacultyTimetable;
+
+setTimeout(() => {
+    // SUBJECT DRAG (Source List)
+    const subjectList = document.getElementById("facultySubjects");
+    if (subjectList) {
+        new Sortable(subjectList, {
+            group: {
+                name: 'faculty_group',
+                pull: 'clone',
+                put: false
+            },
+            animation: 150,
+            sort: false
+        });
+    }
+
+    // SLOT DROP (Target Cells)
+    document.querySelectorAll('.slot').forEach(slot => {
+        new Sortable(slot, {
+            group: 'faculty_group',
+            animation: 150,
+           // Inside your Sortable initialization for .slot
+onAdd: async function(evt) {
+    let subject = evt.item.innerText.trim();
+    let day = evt.to.dataset.day;
+    let slotNo = evt.to.dataset.slot;
+    let part = evt.to.dataset.part;
+    let faculty = document.getElementById("faculty").value;
+    let sem = document.getElementById("facultySem").value;
+    let uni_id = localStorage.getItem("uni_id");
+
+    // Save to database
+    await fetch("http://127.0.0.1:8000/add_faculty_timetable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            faculty, subject, sem, day, 
+            slot: slotNo, 
+            part, 
+            university_id: uni_id
+        })
+    });
+    
+    // Refresh the UI to ensure formatting is consistent
+    loadFacultyTimetable(); 
+}
+        });
+    });
+}, 500);
+
+}
+
+    function addSubject(){
+      const sub = document.getElementById("subjectInput").value;
+      if(!sub) return alert("Enter subject");
+      let div = document.createElement("div");
+      div.className = "subject";
+      div.innerText = sub;
+      document.getElementById("subjectList").appendChild(div);
+      document.getElementById("subjectInput").value="";
+    }
+function addFacultySubject(){
+
+const sub =
+document.getElementById("facultySubjectInput").value;
+
+if(!sub) return alert("Enter subject");
+
+let div = document.createElement("div");
+
+div.className="subject bg-indigo-500 text-white px-3 py-1 rounded cursor-move";
+div.innerText=sub;
+
+document.getElementById("facultySubjects")
+.appendChild(div);
+
+document.getElementById("facultySubjectInput").value="";
+
+}  
+// 1. Function to fetch and display saved data
+async function loadFacultyTimetable() {
+    const sem = document.getElementById("facultySem").value;
+    const uni_id = localStorage.getItem("uni_id");
+
+    if (!sem || !uni_id) return;
+
+    // Fetch the saved data
+    const res = await fetch(`http://127.0.0.1:8000/get_faculty_timetable_admin?sem=${sem}&uni_id=${uni_id}`);
+    const data = await res.json();
+
+    // Clear all existing slots first
+    document.querySelectorAll('.slot').forEach(slot => slot.innerHTML = "");
+
+    // Fill slots with saved data
+    data.forEach(item => {
+        // Find the specific slot using the data attributes
+        const selector = `.slot[data-day="${item.day}"][data-slot="${item.slot}"][data-part="${item.part}"]`;
+        const slotEl = document.querySelector(selector);
+
+        if (slotEl) {
+            slotEl.innerHTML = `
+                <div class="bg-blue-100 p-1 rounded text-xs border border-blue-300">
+                    <div class="font-bold">${item.subject}</div>
+                    <div class="text-gray-600">${item.faculty}</div>
+                </div>`;
+        }
+    });
+}
+
+// 2. Updated Drag and Drop Logic
+setTimeout(() => {
+    // Source List
+    new Sortable(document.getElementById("facultySubjects"), {
+        group: { name: 'faculty', pull: 'clone', put: false },
+        sort: false
+    });
+
+    // Target Slots
+    document.querySelectorAll('.slot').forEach(slot => {
+        new Sortable(slot, {
+            group: 'faculty',
+onAdd: async function(evt) {
+    let subject = evt.item.innerText.trim();
+    let day = evt.to.dataset.day;
+    let slotNo = evt.to.dataset.slot;
+    let part = evt.to.dataset.part;
+    let faculty = document.getElementById("faculty").value;
+    let sem = document.getElementById("facultySem").value;
+
+    await fetch("http://127.0.0.1:8000/add_faculty_timetable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            faculty: faculty,
+            subject: subject,
+            sem: sem,
+            day: day,
+            slot: slotNo,  // Matches backend data["slot"]
+            part: part,    // Matches backend data["part"]
+            university_id: localStorage.getItem("uni_id")
+        })
+    });
+}
+        });
+    });
+}, 500);
+async function loadSavedFacultyTimetable() {
+    const sem = document.getElementById("facultySem").value;
+    const uni_id = localStorage.getItem("uni_id");
+    
+    const res = await fetch(`http://127.0.0.1:8000/get_faculty_timetable_admin?sem=${sem}&uni_id=${uni_id}`);
+    const data = await res.json();
+
+    // Loop through the data and put it back into the slots
+    data.forEach(item => {
+        const slot = document.querySelector(`.slot[data-day="${item.day}"][data-slot="${item.slot}"][data-part="${item.part}"]`);
+        if(slot) {
+            slot.innerHTML = `<div class="subject-box">${item.subject} <br> <small>${item.faculty}</small></div>`;
+        }
+    });
+}
+    // ================= EVENTS =================
+    async function addEvent(){
+      const title = document.getElementById("title").value;
+      const date = document.getElementById("date").value;
+      const desc = document.getElementById("desc").value;
+      await fetch("http://127.0.0.1:8000/add_event",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({title,date,description:desc})
+      });
+      loadEvents();
+    }
+
+    async function loadEvents(){
+      let res = await fetch("http://127.0.0.1:8000/get_events");
+      let data = await res.json();
+      let html = `<table class="w-full bg-white">
+        <tr><th>Title</th><th>Date</th></tr>`;
+      data.forEach(d=>{
+        html += `<tr><td>${d[1]}</td><td>${d[2]}</td></tr>`;
+      });
+      html += `</table>`;
+      tableContainer.innerHTML = html;
+    }
+
+    async function loadTimetable(){
+
+let dept = document.getElementById("dept").value;
+let sem = document.getElementById("sem").value;
+
+let res = await fetch(
+`http://127.0.0.1:8000/get_timetable/${dept}/${sem}`
+);
+
+let data = await res.json();
+
+document.querySelectorAll(".slot").forEach(s=>{ 
+s.innerHTML=""; 
+});
+
+data.forEach(d=>{
+
+let subject = d[0];
+let day = d[1];
+let slot = d[2];
+let part = d[3];
+
+let cell = document.querySelector(
+`[data-day="${day}"][data-slot="${slot}"][data-part="${part}"]`
+);
+
+if(cell){
+cell.innerHTML = `<div class="subject">${subject}</div>`;
+}
+
+});
+
+}
+
+    // ================= BUILDINGS =================
+    async function addBuilding(){
+      const name = document.getElementById("name").value;
+      const rooms = document.getElementById("rooms").value;
+      await fetch("http://127.0.0.1:8000/add_building",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({name, rooms:parseInt(rooms)})
+      });
+      loadBuildings();
+    }
+
+    async function loadBuildings(){
+      let res = await fetch("http://127.0.0.1:8000/get_buildings");
+      let data = await res.json();
+      let html = `<table class="w-full bg-white"><tr><th>Name</th><th>Rooms</th></tr>`;
+      data.forEach(d=>{ html += `<tr><td>${d[1]}</td><td>${d[2]}</td></tr>`; });
+      html += `</table>`;
+      tableContainer.innerHTML = html;
+    }
+
+    // ================= SCHEDULE =================
+    async function addSchedule(){
+      const title = document.getElementById("title").value;
+      const date = document.getElementById("date").value;
+      await fetch("http://127.0.0.1:8000/add_schedule",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({title,date})
+      });
+      loadSchedule();
+    }
+
+    async function loadSchedule(){
+      let res = await fetch("http://127.0.0.1:8000/get_schedule");
+      let data = await res.json();
+      let html = `<table class="w-full bg-white"><tr><th>Title</th><th>Date</th></tr>`;
+      data.forEach(d=>{ html += `<tr><td>${d[1]}</td><td>${d[2]}</td></tr>`; });
+      html += `</table>`;
+      tableContainer.innerHTML = html;
+    }
+
+    // ================= USERS =================
+
+
+async function loadUsers() {
+
+const uni_id = localStorage.getItem("uni_id");
+
+console.log("UNI ID:", uni_id);
+
+if (!uni_id || uni_id === "undefined") {
+tableContainer.innerHTML =
+"<p class='text-red-500'>University ID missing. Login again.</p>";
+return;
+}
+
+try {
+
+const res = await fetch(
+`http://127.0.0.1:8000/get_users?university_id=${uni_id}`
+);
+
+const data = await res.json();
+
+let html = `
+<table class="w-full bg-white shadow rounded">
+<tr class="bg-gray-200">
+<th class="p-2">Name</th>
+<th class="p-2">Email</th>
+<th class="p-2">Type</th>
+<th class="p-2">Department</th>
+<th class="p-2">Subject/Sem</th>
+<th class="p-2">Action</th>
+<th class="p-2">Verify</th>
+</tr>
+`;
+
+data.forEach(user => {
+
+html += `
+<tr class="border">
+<td class="p-2">${user.name}</td>
+<td class="p-2">${user.email}</td>
+<td class="p-2">${user.role}</td>
+<td class="p-2">${user.department || "-"}</td>
+<td class="p-2">${user.subject || user.semester || "-"}</td>
+<td class="p-2">
+<button 
+onclick="deleteUser(${user.id},'${user.role}')"
+class="bg-red-500 text-white px-2 py-1 rounded">
+Delete
+</button>
+</td>
+
+<td class="p-2">
+${user.role === "student" ? `
+<button 
+onclick="verifyStudentAdmin(${user.id})"
+class="bg-green-500 text-white px-2 py-1 rounded">
+Verify
+</button>` : ""}
+</td>
+</tr>
+`;
+
+});
+
+html += `</table>`;
+
+tableContainer.innerHTML = html;
+
+}
+catch(err){
+console.log(err);
+tableContainer.innerHTML =
+"<p class='text-red-500'>Error loading users</p>";
+}
+
+}
+async function deleteUser(id,role){
+
+await fetch("http://127.0.0.1:8000/delete_user",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+id:id,
+role:role
+})
+
+});
+
+loadUsers();
+
+}
+async function verifyStudentAdmin(id){
+
+await fetch("http://127.0.0.1:8000/verify_student_admin",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+id:id
+})
+
+});
+
+loadUsers();
+
+}
+async function verifyStudent(){
+
+const username = document.getElementById("username").value;
+const email = document.getElementById("email").value;
+
+const res = await fetch("http://127.0.0.1:8000/verify_student",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+username:username,
+email:email
+})
+
+});
+
+const data = await res.json();
+
+if(data.valid){
+
+alert("Student Verified");
+
+window.location.href="dashboard.html";
+
+}else{
+
+alert("Student Not Verified");
+
+}
+
+}
+async function addFacultyTimetable(){
+
+const faculty = document.getElementById("faculty").value;
+const subject = document.getElementById("subject").value;
+const sem = document.getElementById("facultySem").value;
+const day = document.getElementById("day").value;
+const slot = document.getElementById("slot").value;
+
+await fetch("http://127.0.0.1:8000/add_faculty_timetable",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+faculty,
+subject,
+sem,
+day,
+slot,
+part:1
+})
+
+});
+
+loadFacultyTimetable();
+
+}
+
+// ================= LOGOUT =================
+    function logout(){
+      localStorage.clear();
+      localStorage.setItem("fromLogout","true");
+      window.location.href="register.html";
+    }
+
+    window.onload = function(){ loadUsers(); }
+function showStudentForm(){
+
+document.getElementById("userForm").innerHTML = `
+
+<h3 class="text-xl font-bold mb-2">Add Student</h3>
+
+<input id="sname" placeholder="Student Name" class="border p-2 rounded">
+<input id="semail" placeholder="Email" class="border p-2 rounded">
+<input id="sdept" placeholder="Department" class="border p-2 rounded">
+<input id="ssem" placeholder="Semester" class="border p-2 rounded">
+
+<button onclick="addStudent()" 
+class="bg-blue-500 text-white px-3 py-2 rounded">
+Add Student
+</button>
+
+`;
+
+}
+function showFacultyForm(){
+
+document.getElementById("userForm").innerHTML = `
+
+<h3 class="text-xl font-bold mb-3">Add Faculty</h3>
+
+<input id="fname" 
+placeholder="Faculty Name" 
+class="border p-2 rounded w-full mb-2">
+
+<input id="femail" 
+placeholder="Email" 
+class="border p-2 rounded w-full mb-2">
+
+<input id="fdept" 
+placeholder="Department" 
+class="border p-2 rounded w-full mb-2">
+
+<input id="fsubject" 
+placeholder="Subject" 
+class="border p-2 rounded w-full mb-2">
+
+<select id="fsem" 
+class="border p-2 rounded w-full mb-3">
+<option value="">Select Semester</option>
+<option value="Sem 1">Sem 1</option>
+<option value="Sem 2">Sem 2</option>
+<option value="Sem 3">Sem 3</option>
+<option value="Sem 4">Sem 4</option>
+<option value="Sem 5">Sem 5</option>
+<option value="Sem 6">Sem 6</option>
+<option value="Sem 7">Sem 7</option>
+<option value="Sem 8">Sem 8</option>
+</select>
+
+<button onclick="addFaculty()" 
+class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+Add Faculty
+</button>
+
+`;
+
+}
+async function addStudent(){
+
+const name = document.getElementById("sname").value;
+const email = document.getElementById("semail").value;
+const dept = document.getElementById("sdept").value;
+const sem = document.getElementById("ssem").value;
+const uni_id = localStorage.getItem("uni_id");
+
+await fetch("http://127.0.0.1:8000/add_student",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+name,
+email,
+department:dept,
+semester:sem,
+university_id:uni_id
+})
+
+});
+
+loadUsers();
+
+}
+async function addFaculty(){
+
+const name = document.getElementById("fname").value;
+const email = document.getElementById("femail").value;
+const dept = document.getElementById("fdept").value;
+const subject = document.getElementById("fsubject").value;
+const sem = document.getElementById("fsem").value;
+const uni_id = localStorage.getItem("uni_id");
+
+await fetch("http://127.0.0.1:8000/add_faculty",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+name,
+email,
+department:dept,
+subject,
+semester:sem,
+university_id:uni_id
+})
+
+});
+
+alert("Faculty Added Successfully");
+
+loadUsers();
+
+}
+  </script>
+  
+</body>
+</html>

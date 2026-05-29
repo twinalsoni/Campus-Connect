@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Campus Connect | Register Institution</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+<style>
+body{
+    font-family:'Inter',sans-serif;
+    background:linear-gradient(135deg,#ecfeff,#eef2ff);
+}
+</style>
+
+</head>
+
+
+<body class="min-h-screen flex items-center justify-center p-6">
+
+<div class="w-full max-w-xl">
+
+<!-- Header -->
+<div class="text-center mb-8">
+
+<div class="w-20 h-20 bg-gradient-to-r from-teal-500 to-indigo-500 rounded-3xl flex items-center justify-center mx-auto shadow-xl mb-4">
+<img src="https://img.icons8.com/ios-filled/100/ffffff/graduation-cap.png" class="w-10"/>
+</div>
+
+<h1 class="text-3xl font-extrabold text-slate-900">
+University Registration
+</h1>
+
+<p class="text-slate-500 mt-2">
+Register your institution to join Campus Connect
+</p>
+
+</div>
+
+
+<!-- Card -->
+<div class="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-slate-100 relative">
+
+<form id="registerForm" class="space-y-6 mt-4">
+
+<!-- University Name -->
+<div>
+<label class="block text-sm font-semibold text-slate-600 mb-2">
+University Name
+</label>
+
+<input 
+id="uniName"
+type="text"
+placeholder="e.g. Ganpat University"
+required
+class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
+/>
+</div>
+
+
+<!-- Email -->
+<div>
+<label class="block text-sm font-semibold text-slate-600 mb-2">
+Official Email / Domain
+</label>
+
+<input 
+id="uniDomain"
+type="text"
+placeholder="e.g. admin@university.ac.in"
+required
+class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+/>
+
+<p class="text-xs text-slate-400 mt-1">
+This domain will be used to verify students and faculty.
+</p>
+
+</div>
+
+
+<!-- Button -->
+<button 
+type="submit"
+class="w-full py-4 bg-gradient-to-r from-teal-500 to-indigo-500 text-white font-bold text-lg rounded-xl shadow-lg hover:scale-[1.02] transition"
+>
+Register Institution
+</button>
+
+</form>
+
+</div>
+
+
+<p class="text-center text-sm text-slate-400 mt-6">
+© 2026 Campus Connect
+</p>
+
+</div>
+
+
+<script>
+
+// CHECK IF ALREADY LOGGED IN
+if(localStorage.getItem("isLoggedIn")){
+    window.location.href = "admin_dashboard.html";
+}
+
+
+document.getElementById('registerForm').addEventListener('submit', async function(e){
+
+e.preventDefault();
+
+// Get values
+const name = document.getElementById('uniName').value.trim();
+const email = document.getElementById('uniDomain').value.trim();
+
+// Validation
+if(!name || !email){
+    alert("Please fill all fields");
+    return;
+}
+
+
+// Email format check
+const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$/;
+
+if(!emailPattern.test(email)){
+    alert("Enter valid email");
+    return;
+}
+
+
+try{
+
+const res = await fetch("http://127.0.0.1:8000/register_admin",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body: JSON.stringify({
+        full_name: name,
+        email: email,
+        university: name
+    })
+});
+
+
+const data = await res.json();
+
+
+// If already exists
+if(data.error === "User exists"){
+
+console.log("Existing user:", data);
+
+alert("Already Registered → Redirecting to Dashboard");
+
+localStorage.setItem("isLoggedIn","true");
+localStorage.setItem("name", name);
+localStorage.setItem("userEmail", email);
+localStorage.setItem("uniName", email.split('@')[1]);
+
+// IMPORTANT FIX
+localStorage.setItem("uni_id", data.university_id);
+
+window.location.href="admin_dashboard.html";
+}
+
+
+// If new registration success
+else if(data.message){
+
+console.log("API Response:", data); // Debug
+
+alert("University Registered Successfully!");
+
+localStorage.setItem("isLoggedIn","true");
+localStorage.setItem("name", name);
+localStorage.setItem("userEmail", email);
+localStorage.setItem("uniName", email.split('@')[1]);
+
+// FIX (IMPORTANT)
+localStorage.setItem("uni_id", data.university_id);
+
+// Debug
+console.log("Saved uni_id:", localStorage.getItem("uni_id"));
+
+window.location.href="admin_dashboard.html";
+}
+
+else{
+alert(data.error || "Error");
+}
+
+}
+
+catch(err){
+alert("Server not running!");
+console.log(err);
+}
+
+});
+
+</script>
+
+
+</body>
+</html>

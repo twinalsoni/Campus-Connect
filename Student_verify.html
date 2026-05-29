@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Student Verification</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+body{
+font-family:'Inter',sans-serif;
+background:linear-gradient(135deg,#ecfeff,#eef2ff);
+}
+</style>
+
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6">
+
+<div class="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl">
+
+<h2 class="text-2xl font-bold text-center mb-6">
+Student Verification
+</h2>
+
+<input id="username"
+class="w-full p-3 border rounded-lg mb-4"
+placeholder="Enter Username">
+
+<input id="email"
+class="w-full p-3 border rounded-lg mb-4"
+placeholder="Enter Email">
+
+<button onclick="verifyStudent()"
+class="w-full bg-indigo-500 text-white py-3 rounded-lg">
+Verify Student
+</button>
+
+</div>
+
+<script>
+
+async function verifyStudent(){
+
+const username = document.getElementById("username").value;
+const email = document.getElementById("email").value;
+
+const res = await fetch("http://127.0.0.1:8000/login_verify",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+username:username,
+email:email
+})
+
+});
+
+const data = await res.json();
+
+if(data.valid){
+
+localStorage.setItem("dept",data.department);
+localStorage.setItem("semester",data.semester);
+localStorage.setItem("uni_id",data.university_id);
+localStorage.setItem("student_name",username);
+window.location.href="dashboard.html";
+
+}
+else{
+
+alert("User Not Verified");
+
+}
+
+}
+
+</script>
+
+</body>
+</html>

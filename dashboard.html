@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Campus Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
+        .bg-signature { background: linear-gradient(135deg, #14B8A6 0%, #6366F1 100%); }
+        .view { display: none; height: 100%; width: 100%; }
+        .view.active { display: flex; }
+        #map { height: 100%; width: 100%; border-radius: 3rem; }
+        /* Rainbow Logic */
+        .border-blue { border-top: 6px solid #3B82F6; }
+        .border-green { border-top: 6px solid #10B981; }
+        .border-purple { border-top: 6px solid #8B5CF6; }
+    </style>
+</head>
+<body class="flex flex-row bg-[#F8FAFC]">
+
+    <aside class="w-[320px] bg-white border-r p-10 flex flex-col">
+        <div class="flex items-center gap-4 mb-16">
+            <div class="w-12 h-12 bg-signature rounded-2xl flex items-center justify-center text-white font-bold">🎓</div>
+            <h1 id="sideUni" class="font-black text-xl uppercase truncate w-32">Campus</h1>
+        </div>
+        <nav class="space-y-4 flex-1">
+            <button onclick="setView('map')" class="w-full p-5 rounded-2xl bg-signature text-white font-black text-left">Map View</button>
+            <button onclick="setView('schedule')" class="w-full p-5 rounded-2xl text-slate-400 font-bold hover:bg-slate-50 text-left">Timetable</button>
+            <button onclick="setView('events')" class="w-full p-5 rounded-2xl text-slate-400 font-bold hover:bg-slate-50 text-left">Events</button>
+        </nav>
+        <div class="mt-auto pt-8 border-t flex flex-col gap-6">
+            <div class="flex items-center gap-4">
+                <div id="avatar" class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-black">U</div>
+                <div><p id="sideName" class="font-black text-sm">User</p></div>
+            </div>
+            <button onclick="window.location.href='index.html'" class="w-full p-5 bg-red-500 text-white font-black rounded-2xl">LOGOUT</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col">
+        <header class="p-10 border-b bg-white flex justify-between">
+            <h2 id="vTitle" class="text-4xl font-black text-slate-900 tracking-tighter uppercase">Campus Map</h2>
+        </header>
+
+        <div id="mapView" class="view active p-10 gap-10">
+            <div class="flex-1 bg-white rounded-[48px] overflow-hidden shadow-xl"><div id="map"></div></div>
+            <div class="w-[400px] flex flex-col gap-10">
+                <div class="bg-white p-10 rounded-[48px] shadow-sm border border-slate-100">
+                    <h3 id="selName" class="text-2xl font-black mb-1">Select Building</h3>
+                    <p id="selCat" class="text-xs text-slate-300 font-bold uppercase mb-10">Click on Map</p>
+                    <button class="w-full py-6 bg-signature text-white font-black rounded-3xl">GET DIRECTIONS</button>
+                </div>
+                <div class="bg-white p-10 rounded-[48px] shadow-sm flex-1">
+                    <h4 class="font-black text-lg mb-6">Today's Class</h4>
+                    <div id="miniSched" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="scheduleView" class="view p-10 overflow-y-auto">
+            <div class="grid grid-cols-5 gap-6 w-full" id="schedGrid"></div>
+        </div>
+
+        <div id="eventsView" class="view p-10 overflow-y-auto">
+            <div class="grid grid-cols-2 gap-10 w-full" id="eventGrid"></div>
+        </div>
+    </main>
+
+    <script>
+        function setView(v) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById(v + 'View').classList.add('active');
+            document.getElementById('vTitle').innerText = v.toUpperCase();
+        }
+
+        window.onload = () => {
+            document.getElementById('sideUni').innerText = localStorage.getItem('uniName') || "University";
+            document.getElementById('sideName').innerText = localStorage.getItem('userEmail').split('@')[0];
+            initMap();
+            renderTimetable();
+            renderEvents();
+        };
+
+        function initMap() {
+            const m = L.map('map', {zoomControl: false}).setView([42.359, -71.092], 16);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(m);
+            // Interactive Building Marker
+            const poly = L.polygon([[42.359, -71.093], [42.360, -71.093], [42.360, -71.092], [42.359, -71.092]], {color: '#6366F1', fillOpacity: 0.2}).addTo(m);
+            poly.on('click', () => {
+                document.getElementById('selName').innerText = "Student Center";
+                document.getElementById('selCat').innerText = "Recreation & Social";
+            });
+        }
+
+        function renderTimetable() {
+            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+            document.getElementById('schedGrid').innerHTML = days.map(d => `
+                <div class="space-y-6">
+                    <p class="text-center font-black text-slate-300 uppercase text-[10px] tracking-widest">${d}</p>
+                    <div class="bg-white p-6 rounded-3xl border-blue animate-up shadow-sm">
+                        <h5 class="font-black text-slate-800 text-sm">Data Structures</h5>
+                        <p class="text-[10px] text-slate-400 mt-2">9:00 AM</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderEvents() {
+            const evs = [{t:"Tech Fest", d:"Jan 25"}, {t:"Career Fair", d:"Feb 02"}];
+            document.getElementById('eventGrid').innerHTML = evs.map(e => `
+                <div class="bg-white rounded-[48px] overflow-hidden shadow-sm border flex flex-col">
+                    <div class="h-2 bg-teal-500"></div>
+                    <div class="p-10">
+                        <h4 class="text-2xl font-black">${e.t}</h4>
+                        <p class="text-slate-400 mt-4">${e.d}</p>
+                        <button class="w-full py-4 bg-teal-500 text-white font-black rounded-2xl mt-8">REGISTER</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

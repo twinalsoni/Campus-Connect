@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Portal Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F1F5F9; }
+        .bg-signature { background: linear-gradient(135deg, #14B8A6 0%, #6366F1 100%); }
+        .step { display: none; }
+        .step.active { display: block; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+
+    <div id="step1" class="step active w-full max-w-xl bg-white p-12 rounded-[56px] shadow-2xl text-center">
+        <h2 class="text-4xl font-black text-slate-900 mb-10 tracking-tighter">Find Your University</h2>
+        <input id="domInput" class="w-full p-7 bg-slate-50 rounded-[28px] text-2xl text-center outline-none border-none font-black text-indigo-600" placeholder="e.g. mit.edu">
+        <button onclick="checkDomain()" class="w-full py-6 bg-indigo-600 text-white font-black text-xl rounded-[28px] shadow-xl mt-8">CONTINUE</button>
+    </div>
+
+    <div id="step2" class="step w-full max-w-2xl bg-white rounded-[48px] shadow-2xl overflow-hidden">
+        <div class="bg-signature p-12 text-white">
+            <h2 id="displayUni" class="text-3xl font-black uppercase">University</h2>
+        </div>
+        <div class="p-12 grid grid-cols-2 gap-8 text-center">
+            <div onclick="login('student')" class="cursor-pointer p-10 border-4 border-blue-50 rounded-[40px] hover:border-blue-500 transition-all">
+                <img src="https://img.icons8.com/ios/100/3B82F6/graduation-cap.png" class="w-16 mx-auto mb-4"/>
+                <h4 class="font-black text-slate-800">STUDENT</h4>
+            </div>
+            <div onclick="login('faculty')" class="cursor-pointer p-10 border-4 border-indigo-50 rounded-[40px] hover:border-indigo-500 transition-all">
+                <img src="https://img.icons8.com/ios/100/6366F1/conference-call.png" class="w-16 mx-auto mb-4"/>
+                <h4 class="font-black text-slate-800">FACULTY</h4>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function checkDomain() {
+            const dom = document.getElementById('domInput').value;
+            if(!dom) return alert("Enter domain");
+            document.getElementById('displayUni').innerText = dom.split('.')[0];
+            localStorage.setItem('uniName', dom.split('.')[0].toUpperCase());
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
+        }
+
+        function login(role) {
+            localStorage.setItem('userRole', role);
+            localStorage.setItem('userEmail', role + '@' + document.getElementById('domInput').value);
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+</html>
